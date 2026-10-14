@@ -1547,49 +1547,72 @@ function viewResearch() {
   <div class="card" style="margin-top:12px">
     <div class="card-title"><strong>研究范围与设施</strong>
       <span class="hint-tiny">等级表是「累计秒数」，逐级耗时 = 本级累计 − 上一级累计</span></div>
-    <div class="facility">
-      <div class="field"><label>ME 研究（材料效率）</label>
-        <div class="hint-tiny">下面两个数字是<b>自定义区间</b>：从第几级研究到第几级。
-          只想研究 ME 就把 TE 的「从」「到」填成同一个数字。</div>
+    <div class="rs-controls">
+      <div class="rs-col">
+        <label>ME 研究（材料效率）</label>
         <div class="row" style="gap:6px">
           <span class="hint-tiny">从</span>
           <input id="rsFromMe" type="number" min="0" max="${info.max_level}" value="${R.fromMe}" style="width:64px">
           <span class="hint-tiny">到</span>
           <input id="rsToMe" type="number" min="0" max="${info.max_level}" value="${R.toMe}" style="width:64px">
-          <span class="hint-tiny">级 → 材料效率 ${R.fromMe * info.me_percent_per_level}% → ${R.toMe * info.me_percent_per_level}%</span>
-        </div></div>
-      <div class="field"><label>TE 研究（时间效率）</label>
+        </div>
+      </div>
+      <div class="rs-col">
+        <label>TE 研究（时间效率）</label>
         <div class="row" style="gap:6px">
           <span class="hint-tiny">从</span>
           <input id="rsFromTe" type="number" min="0" max="${info.max_level}" value="${R.fromTe}" style="width:64px">
           <span class="hint-tiny">到</span>
           <input id="rsToTe" type="number" min="0" max="${info.max_level}" value="${R.toTe}" style="width:64px">
-          <span class="hint-tiny">级 → 时间效率 ${R.fromTe * info.te_percent_per_level}% → ${R.toTe * info.te_percent_per_level}%</span>
-        </div></div>
-      <div class="field"><label>安等倍率（改装件加成系数）</label>
+        </div>
+      </div>
+      <div class="rs-col">
+        <label>安等倍率（改装件加成系数）</label>
         <select id="rsSecurity">
           <option value="" ${!R.security ? 'selected' : ''}>自动（按生产星系）</option>
           <option value="highsec" ${R.security === 'highsec' ? 'selected' : ''}>高安 ×1.0</option>
           <option value="lowsec" ${R.security === 'lowsec' ? 'selected' : ''}>低安 ×1.9</option>
           <option value="nullsec" ${R.security === 'nullsec' ? 'selected' : ''}>00 / 虫洞 ×2.1</option>
-        </select></div>
-      <div class="field" style="grid-column: span 2"><label>叠加改装件（可选，会额外多出一档「建筑 + 改装件」对比）</label>
-        <div class="row" style="gap:6px; margin-bottom:6px">
-          <select id="rsRigSelect" style="flex:1">
-            <option value="">＋ 添加实验室/研究类改装件…</option>
-            ${rigs.filter(g => g.time_percent || g.cost_percent || g.material_percent).map(g =>
-              `<option value="${g.type_id}">${esc(g.name)}　时间${g.time_percent}% 费用${g.cost_percent}%</option>`).join('')}
-          </select>
-        </div>
+        </select>
+      </div>
+      <div class="rs-col rs-col-wide">
+        <label>叠加改装件（可选，会额外多出一档「建筑 + 改装件」对比）</label>
+        <select id="rsRigSelect">
+          <option value="">＋ 添加实验室/研究类改装件…</option>
+          ${rigs.filter(g => g.time_percent || g.cost_percent || g.material_percent).map(g =>
+            `<option value="${g.type_id}">${esc(g.name)}　时间${g.time_percent}% 费用${g.cost_percent}%</option>`).join('')}
+        </select>
         <div class="rigs">${(R.rigTypeIds || []).map(id => {
           const g = rigs.find(x => Number(x.type_id) === Number(id));
           return `<span class="rig-chip">${esc(g ? g.name : id)}
             <button data-action="rs-rig-remove" data-id="${id}" title="移除">×</button></span>`;
         }).join('') || '<span class="hint-tiny">未叠加改装件</span>'}</div>
       </div>
-      <div class="field" style="display:flex; align-items:flex-end; gap:6px">
-        <button class="btn btn-primary btn-block" data-action="research-run">开始模拟</button>
+      <div class="rs-col">
+        <label>生产星系（决定成本指数与安等）</label>
+        <div class="row" style="gap:6px">
+          <input id="rsSystemSearch" type="text" placeholder="输入星系名，如 Jita"
+                 value="${esc(((S.facility || {}).system_name) || '')}" style="width:130px">
+          <button class="btn btn-sm" data-action="rs-system-search">查</button>
+          <button class="btn btn-sm btn-ghost" data-action="rs-system-best"
+                  title="找成本指数最低的高安星系">最低</button>
+        </div>
+        <span class="hint-tiny">${(S.facility && S.facility.system_id)
+          ? '已选 ' + esc(S.facility.system_name || '') + '（' + S.facility.system_id + '）'
+          : '未选星系时成本指数按 0 计，ME/TE 费用列会显示 –'}</span>
       </div>
+      <div class="rs-col rs-col-btn">
+        <button class="btn btn-primary" data-action="research-run">开始模拟</button>
+      </div>
+    </div>
+    <div class="hint-tiny rs-notes">
+      <b>ME 区间</b>：从 ${R.fromMe} 级到 ${R.toMe} 级 → 材料效率 ${R.fromMe * info.me_percent_per_level}% → ${R.toMe * info.me_percent_per_level}%
+      <span class="dim">（只想研究 ME，就把 TE 的「从」「到」填成同一个数字）</span><br>
+      <b>TE 区间</b>：从 ${R.fromTe} 级到 ${R.toTe} 级 → 时间效率 ${R.fromTe * info.te_percent_per_level}% → ${R.toTe * info.te_percent_per_level}%<br>
+      等级表是「累计秒数」，逐级耗时 = 本级累计 − 上一级累计。技能减免自动读取你角色的
+      「冶金学 / 研究概论 / 高级工业理论」等级；未登录时按满级 5 计算。
+      建筑与改装件加成按官方 SDE 属性读取，改装件减免会按安等放大。
+    </div>
     </div>
     <div class="hint" style="margin-top:8px">
       技能减免自动读取你角色的「冶金学 / 研究概论 / 高级工业理论」等级；未登录时按满级 5 计算。

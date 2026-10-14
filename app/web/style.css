@@ -337,3 +337,16 @@ details.block[open] summary { color: var(--green); margin-bottom: 8px; }
   from { background-position: 0 0; }
   to { background-position: 48px 0; }
 }
+
+
+/* 研究页：控件排成一行，说明文字单独一行 */
+.rs-controls {
+  display: flex; flex-wrap: wrap; gap: 14px; align-items: flex-end;
+  padding: 10px 12px; border: 1px solid #2a3a52; border-radius: 8px; background: #16202e;
+}
+.rs-col { display: flex; flex-direction: column; gap: 4px; }
+.rs-col > label { font-size: 12px; color: #9fb0c8; }
+.rs-col-wide { flex: 1; min-width: 260px; }
+.rs-col-btn { justify-content: flex-end; }
+.rs-notes { margin-top: 8px; line-height: 1.7; }
+.rs-notes .dim { color: #7f8ea6; }
