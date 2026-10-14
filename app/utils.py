@@ -3,8 +3,11 @@
 from __future__ import annotations
 
 import datetime as _dt
+import os as _os
+import sys as _sys
 import json
 import os
+import sys as _sys
 import tempfile
 import threading
 import time
@@ -18,6 +21,78 @@ def set_quiet(flag: bool) -> None:
     _quiet = flag
 
 
+# --------------------------------------------------------------------------
+# 日志文件（logs/ 文件夹）
+# --------------------------------------------------------------------------
+_os = os
+_LOG_DIR = None
+_crash_lock = _log_lock
+
+
+def log_dir():
+    """日志目录：程序根目录下的 logs/（便携包与开发目录都对）。"""
+    global _LOG_DIR
+    if _LOG_DIR is None:
+        root = _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))
+        _LOG_DIR = _os.path.join(root, "logs")
+        try:
+            _os.makedirs(_LOG_DIR, exist_ok=True)
+        except Exception:
+            pass
+    return _LOG_DIR
+
+
+def log_file():
+    """当天日志文件路径（logs/app-YYYYMMDD.log）。"""
+    return _os.path.join(log_dir(),
+                         "app-%s.log" % _dt.datetime.now().strftime("%Y%m%d"))
+
+
+def _write_file(line: str) -> None:
+    """把一行同时写进日志文件。写不进去也不能让程序崩（只在 stdout 提示一次）。"""
+    try:
+        with _crash_lock:
+            with open(log_file(), "a", encoding="utf-8", errors="replace") as fh:
+                fh.write(line + "\n")
+    except Exception:
+        pass
+
+
+def log_exception(where: str = "") -> str:
+    """把当前异常（含堆栈）写进 logs/crash-*.log，返回该文件路径。"""
+    import traceback
+    path = _os.path.join(log_dir(),
+                         "crash-%s.log" % _dt.datetime.now().strftime("%Y%m%d-%H%M%S"))
+    text = "".join(traceback.format_exc())
+    try:
+        with open(path, "w", encoding="utf-8", errors="replace") as fh:
+            fh.write("时间: %s\n位置: %s\n\n%s\n"
+                     % (_dt.datetime.now().strftime("%Y-%m-%d %H:%M:%S"), where, text))
+    except Exception:
+        return ""
+    return path
+
+
+def install_hooks() -> None:
+    """装崩溃钩子：无窗口启动时，报错必须落到 logs/，否则用户什么都看不到。"""
+    import threading
+
+    def _hook(exc_type, exc, tb):
+        path = log_exception("未捕获异常")
+        log("✗ 未捕获异常：%r（详情见 %s）", exc, path or "（写文件失败）")
+        if _sys.stderr:
+            try:
+                _sys.__excepthook__(exc_type, exc, tb)
+            except Exception:
+                pass
+
+    _sys.excepthook = _hook
+    try:
+        threading.excepthook = lambda a: _hook(a.exc_type, a.exc_value, a.exc_traceback)
+    except Exception:
+        pass
+
+
 def log(msg, *args) -> None:
     """带时间戳打印到 stdout（避免 GBK 控制台崩溃）。"""
     if args:
@@ -29,6 +104,7 @@ def log(msg, *args) -> None:
         return
     ts = _dt.datetime.now().strftime("%H:%M:%S")
     line = "[%s] %s" % (ts, msg)
+    _write_file(line)
     with _log_lock:
         try:
             print(line, flush=True)

@@ -11,6 +11,7 @@
 from __future__ import annotations
 
 import argparse
+import atexit
 import os
 import sys
 import traceback
@@ -37,6 +38,45 @@ def parse_args(argv=None):
     parser.add_argument("--client-id", help="临时指定 EVE 应用的 client_id")
     parser.add_argument("--clear-cache", action="store_true", help="启动前清空 ESI 响应缓存")
     return parser.parse_args(argv)
+
+
+def _shutdown_hooks(store=None):
+    """无窗口运行时看不到控制台，所以：写 pid 文件、退出时写日志、尝试关库。"""
+    import signal
+
+    def _bye(*_a):
+        try:
+            utils.log("服务停止，已退出")
+        except Exception:
+            pass
+        if store is not None:
+            try:
+                if hasattr(store, "close_all"):
+                    store.close_all()
+            except Exception:
+                pass
+        try:
+            os.remove(getattr(utils, "_pid_path", "") or "")
+        except Exception:
+            pass
+
+    atexit.register(_bye)
+    for name in ("SIGINT", "SIGTERM"):
+        sig = getattr(signal, name, None)
+        if sig is None:
+            continue
+        try:
+            prev = signal.getsignal(sig)
+
+            def _wrap(signum, frame, _prev=prev):
+                _bye()
+                if callable(_prev) and _prev not in (signal.SIG_DFL, signal.SIG_IGN):
+                    _prev(signum, frame)
+                else:
+                    raise SystemExit(0)
+            signal.signal(sig, _wrap)
+        except Exception:
+            pass
 
 
 def main(argv=None) -> int:
