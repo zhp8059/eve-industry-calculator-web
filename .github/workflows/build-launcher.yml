@@ -39,10 +39,20 @@ jobs:
           Add-Content -Encoding utf8 'smoke/app/main.py' 's = http.server.HTTPServer(("127.0.0.1", 8420), http.server.SimpleHTTPRequestHandler)'
           Add-Content -Encoding utf8 'smoke/app/main.py' 's.serve_forever()'
           Get-Process python,pythonw -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
-          Start-Process -FilePath 'smoke/启动.exe' -Wait
+          # 注意：PowerShell 7 的 Start-Process -Wait 会等待**整个进程树**；
+          # 启动器按设计 detached 拉起长期运行的服务 → -Wait 永不返回（CI 卡过 3 次）。
+          # 所以这里不等待，改为轮询 HTTP 判断服务是否起来。
+          Start-Process -FilePath 'smoke/启动.exe'
           Start-Sleep -Seconds 6
-          try { $r = Invoke-WebRequest -UseBasicParsing 'http://127.0.0.1:8420/' -TimeoutSec 15; Write-Host ("冒烟：HTTP " + $r.StatusCode) }
-          catch { throw "启动器没有把服务带起来：$_" }
+          $ok = $false
+          for ($i = 0; $i -lt 20; $i++) {
+            try {
+              $r = Invoke-WebRequest -UseBasicParsing 'http://127.0.0.1:8420/' -TimeoutSec 5
+              Write-Host ("冒烟：HTTP " + $r.StatusCode + "（第 " + ($i+1) + " 次尝试）")
+              $ok = $true; break
+            } catch { Start-Sleep -Seconds 3 }
+          }
+          if (-not $ok) { throw "启动器没有把服务带起来（轮询 20 次仍失败）" }
           Get-Content 'smoke/logs/launcher.log' -ErrorAction SilentlyContinue
           Get-Process python -ErrorAction SilentlyContinue | Stop-Process -Force
         shell: pwsh
