@@ -1,0 +1,29 @@
+{
+  "_说明": "把这个文件复制成 config.json 后按需修改；留空的项会使用程序默认值。程序也会在「设置」页面写回这个文件。",
+
+  "host": "127.0.0.1",
+  "port": 8420,
+  "open_browser": true,
+
+  "client_id": "",
+  "client_secret": "",
+  "use_pkce": true,
+
+  "region_key": "the_forge",
+  "price_source": "jita_sell",
+
+  "scc_surcharge": 0.04,
+  "job_tax_rate": 0.0025,
+  "alpha_clone_tax": 0.0,
+  "material_rounding": "ceil",
+  "include_job_cost": true,
+  "include_job_tax": true,
+
+  "structure_material_bonus": 0.0,
+  "structure_time_bonus": 0.0,
+  "structure_cost_bonus": 0.0,
+
+  "concurrency": 4,
+  "compatibility_date": "2026-08-18",
+  "user_agent": "eve-industry-local/0.1 (+https://developers.eveonline.com/)"
+}
