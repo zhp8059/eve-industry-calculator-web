@@ -26,6 +26,8 @@ from . import secret_check, utils, server as servermod
 
 
 def parse_args(argv=None):
+_write_pid()
+utils.install_hooks()
     parser = argparse.ArgumentParser(
         prog="eve-industry", description="%s v%s（本地版，欧服 Tranquility）" % (APP_NAME, __version__))
     parser.add_argument("--host", default=None, help="监听地址，默认 127.0.0.1")
@@ -78,6 +80,20 @@ def _shutdown_hooks(store=None):
         except Exception:
             pass
 
+
+
+def _write_pid() -> str:
+    """写 logs/server.pid，供「停止.bat」按进程号停止服务。"""
+    try:
+        path = os.path.join(utils.log_dir(), "server.pid")
+        with open(path, "w", encoding="ascii", errors="replace") as fh:
+            fh.write(str(os.getpid()))
+        utils._pid_path = path
+        utils.log("服务进程号 %s 已写入 logs/server.pid", os.getpid())
+        return path
+    except Exception as exc:
+        utils.log("写 server.pid 失败（不影响运行）：%s", exc)
+        return ""
 
 def main(argv=None) -> int:
     args = parse_args(argv)

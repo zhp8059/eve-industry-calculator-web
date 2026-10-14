@@ -1,5 +1,5 @@
-﻿' EVE 工业计算器 —— 无窗口启动（不显示 DOS 窗口）
-' 用 pythonw.exe 启动，控制台不会出现；日志写在 logs\ 文件夹里。
+' EVE industry calculator - silent start (no console window)
+' Uses pythonw.exe so no DOS window appears; logs go to the logs folder.
 Option Explicit
 Dim fso, sh, root, py, cmd
 Set fso = CreateObject("Scripting.FileSystemObject")
@@ -14,5 +14,5 @@ Else
   py = "pythonw"
 End If
 cmd = py & " -m app.main"
-' 0 = 隐藏窗口；False = 不等待
+' 0 = hidden window, False = do not wait
 sh.Run cmd, 0, False
