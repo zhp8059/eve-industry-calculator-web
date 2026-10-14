@@ -1,0 +1,59 @@
+name: build-launcher
+
+# 构建「启动.exe」：PyInstaller 只用于**构建期**，程序运行时依旧零第三方依赖。
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: '要挂到哪个 Release（如 v0.8.24；留空则只出 Artifact）'
+        required: false
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  launcher:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: 安装 PyInstaller（仅构建期）
+        run: pip install --disable-pip-version-check pyinstaller
+      - name: 构建启动器
+        run: |
+          pyinstaller --noconfirm --clean --onefile --windowed --name launcher tools/launcher.py
+          if (-not (Test-Path 'dist/launcher.exe')) { throw '构建产物不存在' }
+          Copy-Item 'dist/launcher.exe' 'dist/启动.exe' -Force
+          Get-Item 'dist/启动.exe' | Select-Object Name, Length
+        shell: pwsh
+      - name: 冒烟测试（启动器能起来且能连上服务）
+        run: |
+          # 用一个最小的假 app 目录验证启动器逻辑（真实程序需要 runtime）
+          New-Item -ItemType Directory -Force -Path smoke/app | Out-Null
+          New-Item -ItemType Directory -Force -Path smoke/runtime | Out-Null
+          Copy-Item 'dist/启动.exe' 'smoke/启动.exe' -Force
+          Set-Content -Encoding utf8 'smoke/app/main.py' 'import sys, http.server, threading, time'
+          Add-Content -Encoding utf8 'smoke/app/main.py' 's = http.server.HTTPServer(("127.0.0.1", 8420), http.server.SimpleHTTPRequestHandler)'
+          Add-Content -Encoding utf8 'smoke/app/main.py' 's.serve_forever()'
+          Copy-Item (Get-Command python.exe).Source 'smoke/runtime/python.exe' -Force
+          Start-Process -FilePath 'smoke/启动.exe' -Wait
+          Start-Sleep -Seconds 6
+          try { $r = Invoke-WebRequest -UseBasicParsing 'http://127.0.0.1:8420/' -TimeoutSec 15; Write-Host ("冒烟：HTTP " + $r.StatusCode) }
+          catch { throw "启动器没有把服务带起来：$_" }
+          Get-Content 'smoke/logs/launcher.log' -ErrorAction SilentlyContinue
+          Get-Process python -ErrorAction SilentlyContinue | Stop-Process -Force
+        shell: pwsh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: 启动.exe
+          path: dist/启动.exe
+      - name: 挂到 Release
+        if: ${{ inputs.tag != '' }}
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ inputs.tag }}
+          files: dist/启动.exe

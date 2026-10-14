@@ -162,6 +162,21 @@ v0.8.22 按规矩不重写，请使用 v0.8.23。
 * 日志在 **`logs\`**：`app-YYYYMMDD.log` 日常运行日志、`crash-*.log` 崩溃堆栈
 
 ---
+## v0.8.24
+
+### 新增「启动.exe」（真 exe 启动器，双击即用、无黑窗口）
+
+由 GitHub Actions 用 PyInstaller 构建（**仅构建期**依赖，程序运行时依旧零第三方依赖）：
+
+* 双击 `启动.exe` → 用自带运行时启动本地服务 → 浏览器自动打开，**不出现 DOS 窗口**
+* 隐藏窗口靠 `CREATE_NO_WINDOW + DETACHED_PROCESS`（不依赖 pythonw，更稳）
+* 找不到运行时 / 放错目录 → 弹 Windows 消息框提示（窗口化 exe 没有控制台可打印）
+* 自身动作写 `logs\launcher.log`，排错有据
+
+`启动.vbs` **保留**作为兜底（有些环境禁用脚本宿主时反而可用）。CI 里带一步
+**冒烟测试**：真的运行 `启动.exe`，确认它把服务带起来（HTTP 200）才允许发布。
+
+---
 本文件记录每个版本的变化。便携版下载见 [Releases](https://github.com/zhp8059/eve-industry-calculator/releases/latest)。
 
 ---
