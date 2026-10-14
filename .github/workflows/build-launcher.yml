@@ -34,12 +34,11 @@ jobs:
         run: |
           # 用一个最小的假 app 目录验证启动器逻辑（真实程序需要 runtime）
           New-Item -ItemType Directory -Force -Path smoke/app | Out-Null
-          New-Item -ItemType Directory -Force -Path smoke/runtime | Out-Null
           Copy-Item 'dist/启动.exe' 'smoke/启动.exe' -Force
           Set-Content -Encoding utf8 'smoke/app/main.py' 'import sys, http.server, threading, time'
           Add-Content -Encoding utf8 'smoke/app/main.py' 's = http.server.HTTPServer(("127.0.0.1", 8420), http.server.SimpleHTTPRequestHandler)'
           Add-Content -Encoding utf8 'smoke/app/main.py' 's.serve_forever()'
-          Copy-Item (Get-Command python.exe).Source 'smoke/runtime/python.exe' -Force
+          Get-Process python,pythonw -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
           Start-Process -FilePath 'smoke/启动.exe' -Wait
           Start-Sleep -Seconds 6
           try { $r = Invoke-WebRequest -UseBasicParsing 'http://127.0.0.1:8420/' -TimeoutSec 15; Write-Host ("冒烟：HTTP " + $r.StatusCode) }
