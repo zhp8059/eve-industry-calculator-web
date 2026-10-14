@@ -350,3 +350,7 @@ details.block[open] summary { color: var(--green); margin-bottom: 8px; }
 .rs-col-btn { justify-content: flex-end; }
 .rs-notes { margin-top: 8px; line-height: 1.7; }
 .rs-notes .dim { color: #7f8ea6; }
+
+/* 研究页：EIV=0 的醒目提示 */
+.warn-note { margin: 8px 0; padding: 8px 10px; border-radius: 6px;
+  background: #3a2b12; border: 1px solid #6b5220; color: #ffd68a; }

@@ -1575,19 +1575,6 @@ function viewResearch() {
           <option value="nullsec" ${R.security === 'nullsec' ? 'selected' : ''}>00 / 虫洞 ×2.1</option>
         </select>
       </div>
-      <div class="rs-col rs-col-wide">
-        <label>叠加改装件（可选，会额外多出一档「建筑 + 改装件」对比）</label>
-        <select id="rsRigSelect">
-          <option value="">＋ 添加实验室/研究类改装件…</option>
-          ${rigs.filter(g => g.time_percent || g.cost_percent || g.material_percent).map(g =>
-            `<option value="${g.type_id}">${esc(g.name)}　时间${g.time_percent}% 费用${g.cost_percent}%</option>`).join('')}
-        </select>
-        <div class="rigs">${(R.rigTypeIds || []).map(id => {
-          const g = rigs.find(x => Number(x.type_id) === Number(id));
-          return `<span class="rig-chip">${esc(g ? g.name : id)}
-            <button data-action="rs-rig-remove" data-id="${id}" title="移除">×</button></span>`;
-        }).join('') || '<span class="hint-tiny">未叠加改装件</span>'}</div>
-      </div>
       <div class="rs-col">
         <label>生产星系（决定成本指数与安等）</label>
         <div class="row" style="gap:6px">
@@ -1704,6 +1691,8 @@ function viewResearchResult(res) {
   <div class="card" style="margin-top:12px">
     <div class="card-title"><strong>各设施对比</strong>
       <span class="hint-tiny">按 ME 耗时排序 · 技能倍率 ME ×${Number(res.skill_factors.me).toFixed(4)} / TE ×${Number(res.skill_factors.te).toFixed(4)} · 成本指数 ${Number(res.cost_index).toFixed(4)}</span></div>
+    ${(Number(((res.context || {}).eiv) || 0) <= 0)
+      ? `<div class="hint warn-note">⚠ 本地缺少材料调整价（EIV = 0），所以下面的 ME 费用 / TE 费用都会是 0。请先到「价格对比」页点「刷新物价」，再回到本页重新模拟。</div>` : ''}
     <div class="table-wrap" style="max-height:56vh">
     <table class="grid">
       <thead><tr><th class="name">设施</th><th>时间倍率</th>
@@ -2588,6 +2577,40 @@ document.addEventListener('click', async (ev) => {
       S.facility.security_status = best.security_status;
       toast(`已选择成本指数最低的高安星系：${best.name}（${Number(best.cost_index).toFixed(5)}）`, 'ok', 5200);
       savePlanLocal(); await previewBonus(); calculate(); break;
+    }
+    case 'rs-system-search': {
+      const q = ($('#rsSystemSearch') || {}).value || '';
+      if (!q.trim()) { toast('请输入星系名', 'warn'); break; }
+      const res = await api('/api/industry/systems/search?q=' + encodeURIComponent(q));
+      if (!res.ok || !(res.results || []).length) { toast('没有找到匹配的星系', 'warn'); break; }
+      const pick = res.results[0];
+      S.facility.system_id = pick.system_id;
+      S.facility.system_name = pick.name;
+      S.facility.security_status = pick.security_status;
+      await api('/api/industry/cost-indices?system_id=' + pick.system_id);
+      toast('已选星系：' + pick.name + '（成本指数 ' + Number(pick.cost_index || 0).toFixed(5) + '）', 'ok', 5000);
+      { const b = document.querySelector('[data-action="research-run"]'); if (b) b.click(); }
+      break;
+    }
+    case 'rs-system-best': {
+      // 先查；查不到就刷新成本指数并**重试一次**（否则用户看到的就是「点了没反应」）。
+      let res = await api('/api/industry/cheapest-systems?activity=research_material&min_security=0.45&limit=5');
+      if (!res.ok || !(res.rows || []).length) {
+        toast('还没有成本指数数据，正在刷新（约 10 秒）…', 'warn', 4000);
+        await api('/api/industry/cost-indices?refresh=1');
+        res = await api('/api/industry/cheapest-systems?activity=research_material&min_security=0.45&limit=5');
+      }
+      if (!res.ok || !(res.rows || []).length) {
+        toast('刷新后仍没有研究类成本指数，请稍后再试', 'warn', 5000);
+        break;
+      }
+      const best = res.rows[0];
+      S.facility.system_id = best.system_id;
+      S.facility.system_name = best.name;
+      S.facility.security_status = best.security_status;
+      toast('已选成本指数最低的高安星系：' + best.name + '（' + Number(best.cost_index || 0).toFixed(5) + '）', 'ok', 5200);
+      { const b2 = document.querySelector('[data-action="research-run"]'); if (b2) b2.click(); }
+      break;
     }
     case 'sde-update': case 'sde-force': {
       const force = a === 'sde-force';

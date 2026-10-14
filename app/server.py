@@ -1134,6 +1134,12 @@ def _research_context(app: App, payload: dict, cfg: dict, blueprint_type_id: int
         adjusted = utils.num((price_ctx["prices"].get(material["type_id"]) or {}).get("adjusted_price"))
         eiv += adjusted * utils.as_int(material["quantity"])
     eiv = round(eiv)
+    eiv_warning = None
+    if eiv <= 0:
+        # 费用 = f(EIV, 成本指数)；EIV 来自材料**调整价**。
+        # 本地没拉过调整价时 EIV=0，费用会恒为 0 —— 必须告诉用户原因，
+        # 否则界面只显示一个 0，看起来像计算坏了。
+        eiv_warning = ("本地缺少材料调整价（EIV = 0），所以 ME/TE 费用会按 0 计。" "请先到「价格对比」页点「刷新物价」，再回到本页重新模拟。")
 
     facility = (payload or {}).get("facility") or {}
     system_id = facility.get("system_id")
@@ -1150,10 +1156,12 @@ def _research_context(app: App, payload: dict, cfg: dict, blueprint_type_id: int
     if rig_type_ids is None:
         rig_type_ids = (facility.get("rig_type_ids") or [])
     facilities = payload.get("facilities")
+    if not facilities and not rig_type_ids:
+        rig_type_ids = "auto"   # 研究页不再选改装件 → 用内核默认对比档
     if not facilities:
         facilities = research.default_facilities(app.store, rig_type_ids)
 
-    return {
+    return {"eiv_warning": eiv_warning,
         "eiv": eiv,
         "cost_index": cost_index,
         "system_id": system_id,
@@ -1207,7 +1215,8 @@ def api_research_simulate(app: App, req: Request):
         system_id=context["system_id"], security=context["security"],
         cost_index=context["cost_index"], eiv=context["eiv"])
     return json_response({**result,
-                          "warnings": (result.get("notes") or []) + context["warnings"],
+                          "warnings": ((result.get("notes") or []) + context["warnings"]
+                          + ([context["eiv_warning"]] if context.get("eiv_warning") else [])),
                           "context": {"eiv": context["eiv"],
                                       "cost_index": context["cost_index"],
                                       "system_id": context["system_id"],

@@ -302,7 +302,8 @@ def default_facilities(store, rig_type_ids=None, activity="research_material") -
             "rig_type_ids": [], "rig_names": [],
             "structure_name": label, "note": row["group_name"],
         })
-        if rig_type_ids:
+        if rig_type_ids and rig_type_ids != "auto":
+            # 旧接口兼容：调用方显式指定改装件时按原样给一档
             facilities.append({
                 "label": "%s + %s" % (label, "、".join(rig_names.get(i, str(i)) for i in rig_type_ids)),
                 "structure_type_id": row["type_id"],
@@ -311,6 +312,39 @@ def default_facilities(store, rig_type_ids=None, activity="research_material") -
                 "structure_name": label,
                 "note": "含改装件",
             })
+
+    # ------------------------------------------------------------------
+    # 默认对比档（用户指定，已按尺寸核对）：
+    #   索迪约(XL) + 屹立超大型实验室优化 II / I
+    #   阿兹贝尔(L) + 屹立大型时间效率研究优化 II / I
+    #   莱塔卢(M)  + 屹立中型时间效率研究加速 II / 加速器 I
+    # 说明：用户最初把第 4 条写成「索迪约 + 大型」，已确认是笔误（索迪约是 XL 建筑）。
+    # ------------------------------------------------------------------
+    if rig_type_ids == "auto" or not rig_type_ids:
+        for sname, rnames in (
+            ("索迪约", ("屹立超大型实验室优化 II", "屹立超大型实验室优化 I")),
+            ("阿兹贝尔", ("屹立大型时间效率研究优化 II", "屹立大型时间效率研究优化 I")),
+            ("莱塔卢", ("屹立中型时间效率研究加速 II", "屹立中型时间效率研究加速器 I")),
+        ):
+            srow = store.q1("SELECT type_id, name FROM types WHERE name=?", (sname,))
+            if not srow:
+                utils.log("默认对比档：找不到建筑 %s，跳过", sname)
+                continue
+            srow = dict(srow)
+            for rname in rnames:
+                rrow = store.q1("SELECT type_id, name FROM types WHERE name=?", (rname,))
+                if not rrow:
+                    utils.log("默认对比档：找不到改装件 %s，跳过", rname)
+                    continue
+                rrow = dict(rrow)
+                facilities.append({
+                    "label": "%s + %s" % (srow["name"], rrow["name"]),
+                    "structure_type_id": int(srow["type_id"]),
+                    "rig_type_ids": [int(rrow["type_id"])],
+                    "rig_names": [rrow["name"]],
+                    "structure_name": srow["name"],
+                    "note": "含改装件",
+                })
     return facilities
 
 
