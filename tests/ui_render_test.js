@@ -653,7 +653,7 @@ const checks = [
   ['研究模拟页含蓝图信息', rs.includes('研发等级') && rs.includes('第 1 级研究时长')],
   ['研究模拟页含 ME/TE 等级输入', rs.includes('rsFromMe') && rs.includes('rsFromTe') && rs.includes('rsToTe')],
   ['研究模拟页含安等选择', rs.includes('rsSecurity') && rs.includes('00 / 虫洞 ×2.1')],
-  ['研究模拟页含改装件叠加', rs.includes('rsRigSelect') && rs.includes('rs-rig-remove')],
+  ['研究模拟页已移除改装件选择（改由内核给固定 6 档）', !rs.includes('rsRigSelect')],
   ['研究模拟页含逐级明细入口', rs.includes('research-detail')],
   ['研究结果含各设施对比表', rs.includes('各设施对比') && rs.includes('索迪约 + 屹立超大型实验室优化 I')],
   ['研究结果含 NPC 站基准行', rs.includes('NPC 空间站（无建筑加成）')],

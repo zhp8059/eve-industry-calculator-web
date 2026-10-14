@@ -1,18 +1,43 @@
 @echo off
-chcp 65001 >nul
 setlocal EnableExtensions
 cd /d "%~dp0"
-echo æ­£åœ¨åœæ­¢ EVE å·¥ä¸šè®¡ç®—å™¨...
+echo ÕıÔÚÍ£Ö¹ EVE ¹¤Òµ¼ÆËãÆ÷...
+
+set "PID="
+set "PORT="
+if exist "logs\server.pid" set /p PID=<"logs\server.pid"
+if exist "logs\server.port" set /p PORT=<"logs\server.port"
+
 set "KILLED="
-if exist "logs\server.pid" (
-  set /p PID=<"logs\server.pid"
-  if defined PID (
-    taskkill /f /pid %PID% >nul 2>nul && set "KILLED=1"
-    del "logs\server.pid" >nul 2>nul
+
+rem ---- 1) °´ pid É±£¬²¢**Ğ£Ñé**£¨Ô­À´Ö»¿´ taskkill ·µ»ØÂë£¬Ê§°ÜÒ²µ±³É¹¦£©----
+if defined PID (
+  taskkill /f /pid %PID% >nul 2>nul
+  timeout /t 1 >nul
+  tasklist /fi "PID eq %PID%" 2>nul | findstr /c:"%PID%" >nul
+  if errorlevel 1 set "KILLED=1"
+)
+
+rem ---- 2) °´**Êµ¼Ê¶Ë¿Ú**ÕÒ¼àÌı½ø³Ì£¨²»ÔÙĞ´ËÀ 8420£©----
+if not defined KILLED if defined PORT (
+  for /f "tokens=5" %%P in ('netstat -ano ^| findstr ":%PORT% " ^| findstr LISTENING') do (
+    taskkill /f /pid %%P >nul 2>nul && set "KILLED=1"
   )
 )
-for /f "tokens=5" %%P in ('netstat -ano ^| findstr ":8420" ^| findstr "LISTENING"') do (
-  taskkill /f /pid %%P >nul 2>nul && set "KILLED=1"
+
+rem ---- 3) ¶µµ×£ºÄ¬ÈÏ¶Ë¿Ú 8420 ----
+if not defined KILLED (
+  for /f "tokens=5" %%P in ('netstat -ano ^| findstr ":8420 " ^| findstr LISTENING') do (
+    taskkill /f /pid %%P >nul 2>nul && set "KILLED=1"
+  )
 )
-if defined KILLED (echo å·²åœæ­¢ã€‚) else (echo æ²¡æœ‰å‘ç°æ­£åœ¨è¿è¡Œçš„æœåŠ¡ã€‚)
+
+if exist "logs\server.pid" del "logs\server.pid" >nul 2>nul
+if exist "logs\server.port" del "logs\server.port" >nul 2>nul
+
+if defined KILLED (
+  echo ÒÑÍ£Ö¹¡£
+) else (
+  echo Ã»ÓĞÕÒµ½ÕıÔÚÔËĞĞµÄ·şÎñ^(¿ÉÄÜÒÑ¾­¹Ø±Õ^)¡£
+)
 timeout /t 2 >nul

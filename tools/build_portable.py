@@ -282,7 +282,9 @@ def main() -> int:
 
 
     # 若 CI 构建过「启动.exe」，一并放进便携包（没有则保留 启动.vbs 兜底）
-    _exe = os.path.join(ROOT, "启动.exe")
+    _exe = os.path.join(ROOT, "EVE-Launcher.exe")
+    if not os.path.isfile(_exe):
+        _exe = os.path.join(ROOT, "启动.exe")
     if os.path.isfile(_exe):
         shutil.copy2(_exe, os.path.join(dest, "启动.exe"))
 

@@ -1398,3 +1398,73 @@ class Store:
                 pass
             self._local.conn = None
 
+
+
+# ---------------------------------------------------------------------------
+# 退出时合并 WAL（降低数据库损坏概率）
+# ---------------------------------------------------------------------------
+def _db_path_for_checkpoint():
+    """尽力找出数据库路径；找不到就返回 None（不影响运行）。"""
+    for name in ("DB_PATH", "DB_FILE", "PATH"):
+        v = globals().get(name)
+        if isinstance(v, str) and v:
+            return v
+    mod = globals().get("cfgmod")
+    v = getattr(mod, "DB_PATH", None) if mod is not None else None
+    return v if isinstance(v, str) and v else None
+
+
+def checkpoint_and_close(path=None, quiet=True) -> dict:
+    """把 WAL 合并回主库并截断；返回 {ok, before, after}（供自检断言）。
+
+    为什么用独立连接：服务器里各线程各自持有连接，atexit 在主线程跑，
+    触达不到它们的连接；新建一个短连接做 TRUNCATE checkpoint 才可靠。
+    """
+    import os as _os
+    import sqlite3 as _sq
+    p = path or _db_path_for_checkpoint()
+    out = {"ok": False, "before": None, "after": None, "path": p}
+    if not p or not _os.path.isfile(p):
+        return out
+    wal = p + "-wal"
+    try:
+        out["before"] = _os.path.getsize(wal) if _os.path.isfile(wal) else 0
+    except Exception:
+        pass
+    try:
+        conn = _sq.connect(p, timeout=5)
+        try:
+            conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+            conn.commit()
+        finally:
+            conn.close()
+        out["after"] = _os.path.getsize(wal) if _os.path.isfile(wal) else 0
+        out["ok"] = True
+    except Exception as exc:
+        if not quiet:
+            try:
+                log("退出前合并 WAL 失败（不影响已写入的数据）：%s", exc)
+            except Exception:
+                pass
+    return out
+
+
+def _install_exit_checkpoint() -> None:
+    """注册退出钩子（幂等）。"""
+    import atexit as _atexit
+    if globals().get("_exit_checkpoint_installed"):
+        return
+    globals()["_exit_checkpoint_installed"] = True
+
+    def _bye(*_a):
+        res = checkpoint_and_close(quiet=False)
+        try:
+            if res.get("ok"):
+                log("退出前已合并 WAL（%s → %s 字节）", res.get("before"), res.get("after"))
+        except Exception:
+            pass
+
+    _atexit.register(_bye)
+
+
+_install_exit_checkpoint()

@@ -311,3 +311,14 @@ def size_human(nbytes) -> str:
             return "%.1f %s" % (n, unit)
         n /= 1024.0
     return "%.1f GB" % n
+
+
+# 模块导入时自安装崩溃钩子（幂等）：无窗口模式下，未捕获异常必须落进 logs/crash-*.log，
+# 否则用户看不到任何线索。放在这里而不是 main.py，是为了不依赖任何锚点。
+_hooks_installed = False
+if not _hooks_installed:
+    try:
+        install_hooks()
+        _hooks_installed = True
+    except Exception:
+        pass

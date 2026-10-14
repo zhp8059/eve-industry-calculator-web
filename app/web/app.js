@@ -1601,10 +1601,6 @@ function viewResearch() {
       建筑与改装件加成按官方 SDE 属性读取，改装件减免会按安等放大。
     </div>
     </div>
-    <div class="hint" style="margin-top:8px">
-      技能减免自动读取你角色的「冶金学 / 研究概论 / 高级工业理论」等级；未登录时按满级 5 计算。
-      建筑与改装件加成按官方 SDE 属性读取，改装件减免会按安等放大。
-    </div>
   </div>` : ''}
 
   ${res && res.ok ? viewResearchResult(res) : ''}
@@ -1689,7 +1685,7 @@ function viewResearchResult(res) {
   </div>
 
   <div class="card" style="margin-top:12px">
-    <div class="card-title"><strong>各设施对比</strong>
+    <div class="card-title"><strong>各设施对比</strong> <span class="hint-tiny">费用 = EIV × 2% × 研究秒数 / 105 ×（1 + 成本指数等）；旗舰/高等级研究极贵，**并非计算错误**</span>
       <span class="hint-tiny">按 ME 耗时排序 · 技能倍率 ME ×${Number(res.skill_factors.me).toFixed(4)} / TE ×${Number(res.skill_factors.te).toFixed(4)} · 成本指数 ${Number(res.cost_index).toFixed(4)}</span></div>
     ${(Number(((res.context || {}).eiv) || 0) <= 0)
       ? `<div class="hint warn-note">⚠ 本地缺少材料调整价（EIV = 0），所以下面的 ME 费用 / TE 费用都会是 0。请先到「价格对比」页点「刷新物价」，再回到本页重新模拟。</div>` : ''}

@@ -93,6 +93,26 @@ def _write_pid() -> str:
         utils.log("写 server.pid 失败（不影响运行）：%s", exc)
         return ""
 
+
+def _write_port() -> str:
+    """写出实际监听端口到 logs/server.port（供停止脚本用，避免写死 8420）。"""
+    try:
+        port = 8420
+        argv = list(sys.argv)
+        for i, a in enumerate(argv):
+            if a == "--port" and i + 1 < len(argv):
+                port = argv[i + 1]
+            elif a.startswith("--port="):
+                port = a.split("=", 1)[1]
+        path = os.path.join(utils.log_dir(), "server.port")
+        with open(path, "w", encoding="ascii", errors="replace") as fh:
+            fh.write(str(port))
+        return path
+    except Exception as exc:
+        utils.log("写 server.port 失败（不影响运行）：%s", exc)
+        return ""
+
+
 def main(argv=None) -> int:
     args = parse_args(argv)
     if args.quiet:
@@ -215,4 +235,13 @@ def main(argv=None) -> int:
 
 
 if __name__ == "__main__":
+    # 作为程序启动时写 pid（跑测试不会走到这里，避免写入假 pid）
+    try:
+        _write_pid()
+        try:
+            _write_port()
+        except Exception:
+            pass
+    except Exception:
+        pass
     sys.exit(main())

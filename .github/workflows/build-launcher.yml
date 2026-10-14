@@ -28,6 +28,7 @@ jobs:
           pyinstaller --noconfirm --clean --onefile --windowed --name launcher tools/launcher.py
           if (-not (Test-Path 'dist/launcher.exe')) { throw '构建产物不存在' }
           Copy-Item 'dist/launcher.exe' 'dist/启动.exe' -Force
+          Copy-Item 'dist/launcher.exe' 'dist/EVE-Launcher.exe' -Force
           Get-Item 'dist/启动.exe' | Select-Object Name, Length
         shell: pwsh
       - name: 冒烟测试（启动器能起来且能连上服务）
@@ -59,10 +60,14 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: 启动.exe
-          path: dist/启动.exe
+          path: |
+            dist/EVE-Launcher.exe
+            dist/启动.exe
       - name: 挂到 Release
         if: ${{ inputs.tag != '' }}
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ inputs.tag }}
-          files: dist/启动.exe
+          files: |
+            dist/EVE-Launcher.exe
+            dist/启动.exe

@@ -1156,8 +1156,6 @@ def _research_context(app: App, payload: dict, cfg: dict, blueprint_type_id: int
     if rig_type_ids is None:
         rig_type_ids = (facility.get("rig_type_ids") or [])
     facilities = payload.get("facilities")
-    if not facilities and not rig_type_ids:
-        rig_type_ids = "auto"   # 研究页不再选改装件 → 用内核默认对比档
     if not facilities:
         facilities = research.default_facilities(app.store, rig_type_ids)
 
