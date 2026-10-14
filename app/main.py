@@ -26,8 +26,6 @@ from . import secret_check, utils, server as servermod
 
 
 def parse_args(argv=None):
-_write_pid()
-utils.install_hooks()
     parser = argparse.ArgumentParser(
         prog="eve-industry", description="%s v%s（本地版，欧服 Tranquility）" % (APP_NAME, __version__))
     parser.add_argument("--host", default=None, help="监听地址，默认 127.0.0.1")
