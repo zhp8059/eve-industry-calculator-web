@@ -308,3 +308,32 @@ details.block[open] summary { color: var(--green); margin-bottom: 8px; }
 .tl-track { height: 18px; background: #16223a; border-radius: 5px; overflow: hidden; position: relative; }
 .tl-fill { position: absolute; top: 0; bottom: 0; background: linear-gradient(90deg,#1d6b41,#3ddc84);
            border-radius: 5px; }
+
+
+/* 全局进度条（下载 / ESI 刷新时显示） */
+.gprog {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 9999;
+  display: flex; align-items: center; gap: 10px;
+  padding: 6px 12px; font-size: 13px;
+  background: #16202e; color: #dbe6f5;
+  border-bottom: 1px solid #2a3a52;
+}
+.gprog-text { white-space: nowrap; }
+.gprog-track {
+  flex: 1; height: 6px; border-radius: 3px; overflow: hidden;
+  background: #22304a; position: relative;
+}
+.gprog-fill {
+  display: block; height: 100%; width: 0;
+  background: linear-gradient(90deg, #3aa0ff, #5fd36a);
+  transition: width .25s ease;
+}
+.gprog.gprog-indet .gprog-fill {
+  width: 100% !important;
+  background: repeating-linear-gradient(90deg, #3aa0ff 0 24px, #2b6db8 24px 48px);
+  animation: gprog-move 1s linear infinite;
+}
+@keyframes gprog-move {
+  from { background-position: 0 0; }
+  to { background-position: 48px 0; }
+}

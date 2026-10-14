@@ -3764,3 +3764,142 @@ if (document.readyState === 'loading') {
 } else {
   bootOnce();
 }
+
+
+/* ==================================================================
+ * 全局进度条：所有"下载 / ESI 刷新"自动显示
+ * ------------------------------------------------------------------
+ * 用户要求：所有涉及下载和 ESI 刷新的按钮都要有进度条。
+ * 这里不去逐个按钮接线（网页版有 13 个相关 action，逐个接容易漏），
+ * 而是在**所有请求的公共出口**（window.fetch）统一拦截：
+ *   - 命中规则 → 顶部显示进度条 + 文案
+ *   - 响应里带 progress / percent → 切换为确定模式（真实百分比）
+ *   - 全部结束 → 短暂显示"完成"再隐藏
+ * ================================================================== */
+(function () {
+  'use strict';
+  if (window.__globalProgressInstalled) return;
+  window.__globalProgressInstalled = true;
+
+  // 命中即视为"下载 / ESI 刷新"（按 URL 关键字，顺序即优先级）
+  var RULES = [
+    [/\/api\/sde\/(download|import|update|force)/, '正在下载 / 导入 SDE'],
+    [/\/api\/market\/refresh/, '正在刷新物价（ESI）'],
+    [/\/api\/characters\/\d+\/refresh/, '正在从 ESI 拉取角色数据'],
+    [/\/api\/corporations\/[^/]+\/refresh/, '正在从 ESI 拉取军团数据'],
+    [/\/api\/characters\/\d+\/(roles|skills)/, '正在读取角色信息（ESI）'],
+    [/\/api\/corporations\/\d+\/(structures|divisions)/, '正在读取军团建筑 / 部门（ESI）'],
+    [/\/api\/market\/(orderbook|order-book|history)/, '正在查询市场数据（ESI）'],
+    [/\/api\/market\/(local|stats)/, '正在读取市场数据（ESI）'],
+    [/\/api\/industry\/cost-indices/, '正在刷新系统成本指数（ESI）'],
+    [/\/api\/fuel\//, '正在读取建筑 / 燃料数据（ESI）'],
+    [/\/api\/industry\/structures/, '正在读取建筑与改装件数据（ESI）'],
+    [/\/api\/research\/(facilities|owned)/, '正在读取研究数据'],
+    [/\/api\/sde\/(search|category|blueprint)/, '正在读取静态数据'],
+    [/\/api\/tasks\//, '正在等待后台任务']
+  ];
+
+  var active = 0, doneTimer = null, mode = 'indet', fill = 0, startedAt = 0;
+
+  var el = document.createElement('div');
+  el.id = 'globalProgress';
+  el.className = 'gprog';
+  el.hidden = true;
+  el.innerHTML = '<span class="gprog-text"></span>' +
+                 '<span class="gprog-track"><i class="gprog-fill"></i></span>';
+  var textEl, fillEl;
+  function ensureDom() {
+    if (!document.body) return;
+    if (!el.parentNode) document.body.appendChild(el);
+    if (!textEl) textEl = el.querySelector('.gprog-text');
+    if (!fillEl) fillEl = el.querySelector('.gprog-fill');
+  }
+
+  function labelFor(url) {
+    for (var i = 0; i < RULES.length; i++) {
+      if (RULES[i][0].test(url)) return RULES[i][1];
+    }
+    return '';
+  }
+
+  function render() {
+    ensureDom();
+    if (!el || !textEl || !fillEl) return;
+    el.hidden = false;
+    el.classList.toggle('gprog-indet', mode === 'indet');
+    fillEl.style.width = (mode === 'indet' ? 100 : Math.max(2, Math.min(100, fill))) + '%';
+  }
+
+  function start(label) {
+    ensureDom();
+    if (doneTimer) { clearTimeout(doneTimer); doneTimer = null; }
+    if (active === 0) startedAt = Date.now();
+    active += 1;
+    if (label && textEl) textEl.textContent = label;
+    if (mode !== 'det') { mode = 'indet'; fill = 0; }
+    render();
+  }
+
+  function setPct(pct, label) {
+    if (pct === null || pct === undefined || isNaN(pct)) return;
+    mode = 'det';
+    fill = Number(pct);
+    if (label && textEl) textEl.textContent = label;
+    render();
+  }
+
+  function end(label) {
+    active = Math.max(0, active - 1);
+    if (active > 0) return;
+    // 只有**耗时较长**的操作才把文案改成"完成"；本地请求往往几十毫秒就结束，
+    // 若立刻改成"完成"，用户看到的是"完成"而不是"正在…"（真浏览器探针发现的）。
+    var elapsed = Date.now() - startedAt;
+    if (textEl && label && elapsed > 1500) textEl.textContent = label;
+    if (textEl && mode === 'det' && fill < 100) fill = 100;
+    render();
+    doneTimer = setTimeout(function () {
+      if (active === 0) { el.hidden = true; mode = 'indet'; fill = 0; }
+    }, 900);
+  }
+
+  // 暴露给其他地方（例如 pollTask）手动驱动
+  window.progressStart = function (label) { start(label || '处理中…'); };
+  window.progressSet = setPct;
+  window.progressEnd = function (label) { end(label || '完成'); };
+
+  // ---- 包一层 fetch ----
+  var origFetch = window.fetch ? window.fetch.bind(window) : null;
+  if (!origFetch) return;
+  window.fetch = function (input, init) {
+    var url = (typeof input === 'string') ? input : (input && input.url) || '';
+    var label = labelFor(url);
+    if (!label) return origFetch(input, init);
+
+    start(label);
+    var pctFromBody = null;
+    return origFetch(input, init).then(function (res) {
+      try {
+        // 只读副本，绝不影响调用方拿到的响应
+        res.clone().json().then(function (data) {
+          if (!data || typeof data !== 'object') return;
+          var p = (data.progress && (data.progress.percent !== undefined
+                    ? data.progress.percent : data.progress))
+                  || (data.percent !== undefined ? data.percent : null)
+                  || (data.task && data.task.progress && (data.task.progress.percent !== undefined
+                        ? data.task.progress.percent : data.task.progress));
+          if (p !== null && p !== undefined && !isNaN(p)) {
+            setPct(Number(p) <= 1 ? Number(p) * 100 : Number(p),
+                   data.progress && data.progress.message ? data.progress.message : label);
+          }
+        }).catch(function () {});
+      } catch (e) {}
+      return res;
+    }).then(function (res) {
+      end('完成');
+      return res;
+    }, function (err) {
+      end('失败（详见日志）');
+      throw err;
+    });
+  };
+})();
