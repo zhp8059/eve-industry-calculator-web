@@ -507,6 +507,25 @@ CORP_ROLES = {
 # --------------------------------------------------------------------------
 # 默认配置
 # --------------------------------------------------------------------------
+
+# SCC（商业安全委员会）附加费按活动区分 —— 用户提供的游戏规则：
+#   科研（材料/时间效率）= 2%  ·  制造 / 发明 = 4%
+# 游戏内实证：研究任务显示「商业安全委员会追加费用 +2.00% PTV」。
+# 拷贝(copying) 用户未明确 → 先按科研族 2%（待确认）。
+SCC_BY_ACTIVITY = {
+    "research_material": 0.02,
+    "research_time": 0.02,
+    "copying": 0.02,
+    "manufacturing": 0.04,
+    "invention": 0.04,
+}
+
+
+def scc_default_for(activity: str, fallback: float = 0.04) -> float:
+    """该活动的 SCC 附加费率。"""
+    return float(SCC_BY_ACTIVITY.get(str(activity or ""), fallback))
+
+
 DEFAULT_CONFIG = {
     "host": "127.0.0.1",
     "port": 8420,

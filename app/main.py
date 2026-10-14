@@ -235,6 +235,15 @@ def main(argv=None) -> int:
 
 
 if __name__ == "__main__":
+    # 单实例保护：同一份数据库只允许一个实例写（避免并发写导致损坏）
+    try:
+        from app import singleinstance
+        if not singleinstance.guard_or_exit():
+            raise SystemExit(1)
+    except SystemExit:
+        raise
+    except Exception:
+        pass
     # 启动前先自检数据库：坏了就自动隔离（保留现场），程序用新库继续启动。
     # 必须在 main() 之前 —— 否则 Store 一 open 就抛 malformed。
     try:

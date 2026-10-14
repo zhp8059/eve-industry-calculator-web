@@ -1,4 +1,6 @@
 /* EVE 工业计算器 — 前端（原生 JS，无任何依赖）
+// B5：短时去重（同一次刷新会被两条路径触发，导致同一份数据拉两次、日志打两遍）
+
  * 视图：蓝图计算 / 工业项目 / 利润排行 / 库存 / 生产规划 / 价格对比 / 设置 / 关于
  */
 'use strict';
@@ -2407,6 +2409,11 @@ async function previewBonus() {
  * 换角色 / 换授权范围之后必须走这一条 —— 只 render() 会把上一个角色的缓存
  * 数据原样重画，表现就是「换了角色页面却不变」。 */
 async function reloadCurrentView() {
+  const __now = Date.now();          // B5 去重
+  if ((window.__loadGuardAt = window.__loadGuardAt || {})['jobs'] && __now - (window.__loadGuardAt = window.__loadGuardAt || {})['jobs'] < 1500) {
+    return S.jobs || { ok: true };
+  }
+  (window.__loadGuardAt = window.__loadGuardAt || {})['jobs'] = __now;
   try {
     if (S.view === 'jobs') {
       const r = await api('/api/jobs' + (S.jobStatus && S.jobStatus !== 'all'
@@ -3703,6 +3710,11 @@ async function runPlanner() {
 }
 
 async function loadJobs() {
+  const __now = Date.now();          // B5 去重
+  if ((window.__loadGuardAt = window.__loadGuardAt || {})['jobs'] && __now - (window.__loadGuardAt = window.__loadGuardAt || {})['jobs'] < 1500) {
+    return S.jobs || { ok: true };
+  }
+  (window.__loadGuardAt = window.__loadGuardAt || {})['jobs'] = __now;
   const res = await api('/api/jobs');
   if (res.ok) S.jobs = res;
   else S.jobs = { ok: true, jobs: [], summary: {}, timeline: { jobs: [] }, message: res.message };

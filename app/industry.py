@@ -689,6 +689,14 @@ def job_cost_breakdown(eiv: float, cost_index: float, activity: str = "manufactu
                        tax_rate: float = 0.0025, alpha_tax: float = 0.0,
                        include_tax: bool = True, include_cost: bool = True) -> dict:
     """把任务费用拆成可核对的几块。"""
+    # SCC 按活动解析：调用方传的若仍是旧的全局默认 0.04，则按活动取（研究 2%）。
+    # 用户显式填过别的值时不覆盖。游戏内研究任务实证为 2%。
+    try:
+        if scc_surcharge is None or abs(float(scc_surcharge) - 0.04) < 1e-12:
+            scc_surcharge = float(getattr(cfgmod, "SCC_BY_ACTIVITY", {}).get(
+                str(activity or ""), scc_surcharge or 0.04))
+    except Exception:
+        pass
     base = job_cost_base(eiv, activity, base_time, runs)
     index = max(0.0, utils.num(cost_index))
     system_cost = base * index

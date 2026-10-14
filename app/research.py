@@ -149,7 +149,8 @@ def _activity_plan(store, info: dict, activity: str, from_level: int, to_level: 
             eiv, cost_index, activity, base_increment, 1,
             scc_surcharge=utils.num(config.get("scc_surcharge", 0.04)),
             cost_factor=cost_factor,
-            tax_rate=utils.num(config.get("job_tax_rate", 0.0)),
+            # 研究类默认不含 0.25% 任务税（游戏研究窗口的税收总额只有 SCC）；用户显式改过 job_tax_rate 则以他为准
+            tax_rate=(0.0 if abs(utils.num(config.get("job_tax_rate", 0.0)) - 0.0025) < 1e-12 else utils.num(config.get("job_tax_rate", 0.0))),
             alpha_tax=utils.num(config.get("alpha_clone_tax", 0.0)),
             include_tax=bool(config.get("include_job_tax", True)),
             include_cost=bool(config.get("include_job_cost", True)))
@@ -304,11 +305,9 @@ def default_facilities(store, rig_type_ids=None, activity="research_material") -
         " ORDER BY g.name, t.name")
     for row in structures:
         label = row["name"] or str(row["type_id"])
-        facilities.append({
-            "label": label, "structure_type_id": row["type_id"],
-            "rig_type_ids": [], "rig_names": [],
-            "structure_name": label, "note": row["group_name"],
-        })
+        # 不再为每个建筑单独出一档（用户要求：去掉「无改装件」的裸建筑行）；
+        # 只保留下面的 6 档「建筑 + 改装件」，以及 NPC 空间站基准。
+        pass
         if rig_type_ids and rig_type_ids != "auto":
             # 旧接口兼容：调用方显式指定改装件时按原样给一档
             facilities.append({
