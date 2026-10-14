@@ -235,6 +235,15 @@ def main(argv=None) -> int:
 
 
 if __name__ == "__main__":
+    # 启动前先自检数据库：坏了就自动隔离（保留现场），程序用新库继续启动。
+    # 必须在 main() 之前 —— 否则 Store 一 open 就抛 malformed。
+    try:
+        from app import dbcheck
+        _r = dbcheck.ensure_healthy_db()
+        if not _r.get("ok"):
+            print("[!] 数据库损坏，已隔离为：%s" % _r.get("quarantined"))
+    except Exception:
+        pass
     # 作为程序启动时写 pid（跑测试不会走到这里，避免写入假 pid）
     try:
         _write_pid()
