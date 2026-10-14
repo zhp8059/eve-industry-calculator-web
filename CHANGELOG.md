@@ -59,6 +59,34 @@ Windows 上会让 `-wal` 处于不一致状态。本版先解决"损坏后的表
 
 ---
 
+## v0.8.20
+
+### 研究模拟页：控件排成一行 + 说明文字单独一行
+
+原来每个控件下方紧跟自己的说明文字，那一排又高又乱。现在：
+ME 区间 / TE 区间 / 安等倍率 / 叠加改装件 / 生产星系 / 开始模拟 **排成一行**，
+所有说明文字统一挪到该行**下方一行**，并动态显示当前 ME/TE 区间的效率范围。
+
+### 新增：生产星系搜索（并因此让 ME/TE 费用真正显示）
+
+* 研究页新增「生产星系」输入框 + 「查」/「最低」按钮
+  （复用蓝图计算页同款接口：`/api/industry/systems/search` 与 `/api/industry/cheapest-systems`）
+* 选中的星系写入**共用的** `S.facility`，研究模拟提交时会带上 `facility.system_id`
+
+**关于费用列显示「–」**：查代码后确认**前端渲染本来就是对的**
+（`cost(f.me.total_cost)`），真因是 **cost_index = 0**（没有选生产星系）——
+截图里「成本指数 0.0000」就是证据。服务端 `_research_context()` 会从
+`facility.system_id` 算出成本指数与 EIV 并传给 `research.simulate()`，
+所以**选了星系，ME 费用 / TE 费用自然出现** ——「加星系选择」与「显示费用」本是同一件事。
+
+### 记录一次失误（v0.8.19 空标签）
+
+发布 v0.8.19 时，用于更新版本号与 CHANGELOG 的内联脚本被 PowerShell 的引号处理弄坏
+（`SyntaxError: unterminated string literal`）而**失败**，但发布流程照旧执行，
+于是出现「标签 v0.8.19、代码仍是 0.8.18」。本版把版本号补正并重新发布。
+教训与之前在桌面版那次相同：**改文件的步骤必须独立校验，失败就不许继续发布**。
+
+---
 本文件记录每个版本的变化。便携版下载见 [Releases](https://github.com/zhp8059/eve-industry-calculator/releases/latest)。
 
 ---
