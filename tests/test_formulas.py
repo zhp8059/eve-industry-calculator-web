@@ -39,6 +39,20 @@ def _qty(materials: dict, type_id: int) -> int:
     return int(materials.get(type_id, 0))
 
 
+
+def _sde_available() -> bool:
+    """仓库里不带 SDE（95MB）；开发工作区也可能没有 data/industry.db。
+    缺库时这些**依赖本地建筑/物品数据**的用例应跳过，而不是失败。"""
+    try:
+        store = Store(cfgmod.DB_PATH)
+        return bool(store.q1("SELECT 1 FROM types LIMIT 1"))
+    except Exception:
+        return False
+
+
+HAS_SDE = _sde_available()
+
+
 class FormulaTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -614,6 +628,7 @@ class StructureRigSizeTests(unittest.TestCase):
         self.assertNotEqual(attrs[37162][1547], attrs[43714][1547])
 
 
+@unittest.skipUnless(HAS_SDE, "需要本地 SDE 数据")
 class StructureActivityScopeTests(unittest.TestCase):
     """建筑加成必须**按活动生效** —— 期望值直接取自游戏内描述。
 

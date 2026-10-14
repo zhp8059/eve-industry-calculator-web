@@ -1,5 +1,36 @@
 # 更新日志
 
+## v0.8.17
+
+### 修：缓存写入失败不再拖垮计算接口
+
+用户实测（v0.8.16）：
+
+```
+app/store.py:1026 put_market_stats → executemany
+sqlite3.DatabaseError: database disk image is malformed
+POST /api/calc/aggregate → 500
+```
+
+**盘口/历史/成本指数只是缓存** —— 数据库损坏或磁盘写不进去时，不该让整个计算接口 500。
+现在这四个缓存写入点（`put_market_stats` / `put_market_history` / `put_cost_indices` /
+`put_facilities`）各自兜底：写失败只记日志并继续，计算结果照常返回。
+
+### 关于数据库反复损坏
+
+你已遇到两次。常见诱因是**程序正在写库时被强杀**（关控制台窗口 / 任务管理器结束 / 断电），
+Windows 上会让 `-wal` 处于不一致状态。本版先解决"损坏后的表现"；
+**下一版**做"降低损坏概率"：正常退出时 `PRAGMA wal_checkpoint(TRUNCATE)` + 关闭连接
+（atexit + SIGINT/SIGTERM）。这一版尝试过但写坏了 `app/main.py`（已恢复，未发布），
+留待下版正确实现。
+
+### 恢复方式（如果再次损坏）
+
+关掉程序 → 删掉 `data/industry.db`（连同 `-wal` / `-shm`）→ 重启 → 到「设置」重新导入 SDE
+并重新登录。数据库只是缓存，没有不可恢复的数据。
+
+---
+
 本文件记录每个版本的变化。便携版下载见 [Releases](https://github.com/zhp8059/eve-industry-calculator/releases/latest)。
 
 ---

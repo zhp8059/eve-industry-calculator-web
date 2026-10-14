@@ -95,7 +95,10 @@ class MarketData:
             rows.append((type_id, region_id, book["buy"], book["sell"],
                          book["buy_volume"], book["sell_volume"], "esi-orders"))
         if rows:
-            self.store.put_market_stats(rows)
+            try:
+                self.store.put_market_stats(rows)
+            except Exception as exc:
+                utils.log("写入缓存失败（不影响本次计算）：%s", exc)
         cached = self.store.get_market_stats(type_ids, region_id)
         out = {"ok": True, "cached": len(cached), "fetched": len(rows), "stats": cached}
         if errors:
@@ -177,7 +180,10 @@ class MarketData:
             return {"ok": False, "message": str(exc)}
         rows = data or []
         if rows:
-            self.store.put_market_history(type_id, region_id, rows)
+            try:
+                self.store.put_market_history(type_id, region_id, rows)
+            except Exception as exc:
+                utils.log("写入缓存失败（不影响本次计算）：%s", exc)
         return {"ok": True, "rows": len(rows)}
 
     def history_prices(self, type_ids, region_id: int = None, days: int = 7) -> dict:
@@ -212,7 +218,10 @@ class MarketData:
                 if activity is None:
                     continue
                 rows.append((system_id, activity, utils.num(entry.get("cost_index"))))
-        self.store.put_cost_indices(rows)
+        try:
+            self.store.put_cost_indices(rows)
+        except Exception as exc:
+            utils.log("写入缓存失败（不影响本次计算）：%s", exc)
         self.store.kv_set("cost_indices_at", utils.now())
         utils.log("成本指数已更新：%s 个星系 / %s 条", len(data or []), len(rows))
         return {"ok": True, "systems": len(data or []), "rows": len(rows)}
@@ -227,7 +236,10 @@ class MarketData:
             return {"ok": False, "message": str(exc)}
         rows = [(item.get("facility_id"), item.get("type_id"), item.get("solar_system_id"),
                  item.get("region_id")) for item in (data or [])]
-        self.store.put_facilities(rows)
+        try:
+            self.store.put_facilities(rows)
+        except Exception as exc:
+            utils.log("写入缓存失败（不影响本次计算）：%s", exc)
         self.store.kv_set("facilities_at", utils.now())
         return {"ok": True, "rows": len(rows)}
 
